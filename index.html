@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IO.net Proposal Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f5f3;
+    --surface: #ffffff;
+    --border: #e2e2de;
+    --border-dark: #c8c8c2;
+    --text: #1a1a18;
+    --text-muted: #6b6b65;
+    --accent: #0a0a0a;
+    --accent-blue: #1a56db;
+    --tag-bg: #f0f0ee;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+    --radius: 4px;
+  }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 380px; min-width: 380px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; }
+  .preview-area { flex: 1; padding: 32px; overflow-y: auto; background: var(--bg); }
+  .sidebar-header { padding: 20px 24px 18px; border-bottom: 1px solid var(--border); background: var(--accent); }
+  .sidebar-logo { height: 28px; object-fit: contain; filter: invert(1); margin-bottom: 6px; display: block; }
+  .sidebar-subtitle { font-size: 11px; color: rgba(255,255,255,0.5); letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; }
+  .sidebar-section { padding: 18px 24px; border-bottom: 1px solid var(--border); }
+  .section-label { font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 14px; }
+  .field-row { margin-bottom: 12px; }
+  .field-row:last-child { margin-bottom: 0; }
+  label { display: block; font-size: 11px; font-weight: 500; color: var(--text-muted); margin-bottom: 4px; letter-spacing: 0.03em; }
+  input[type="text"], input[type="number"], select, textarea { width: 100%; font-family: var(--sans); font-size: 13px; font-weight: 400; color: var(--text); background: var(--surface); border: 1px solid var(--border-dark); border-radius: var(--radius); padding: 7px 10px; outline: none; transition: border-color 0.15s; -webkit-appearance: none; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(26,86,219,0.1); }
+  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b6b65' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; cursor: pointer; }
+  textarea { resize: vertical; min-height: 56px; }
+  .field-row-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .node-card { background: var(--tag-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; }
+  .node-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .node-title { font-size: 12px; font-weight: 600; color: var(--text); }
+  .btn-remove { background: none; border: none; cursor: pointer; color: #cc3333; font-size: 18px; line-height: 1; padding: 0 2px; font-family: var(--mono); }
+  .btn-remove:hover { opacity: 0.6; }
+  .btn-add { width: 100%; padding: 9px; background: none; border: 1px dashed var(--border-dark); border-radius: var(--radius); font-family: var(--sans); font-size: 12px; font-weight: 500; color: var(--text-muted); cursor: pointer; transition: all 0.15s; margin-top: 4px; }
+  .btn-add:hover { background: var(--tag-bg); border-color: var(--accent-blue); color: var(--accent-blue); }
+  .sidebar-actions { padding: 18px 24px; display: flex; flex-direction: column; gap: 10px; }
+  .btn-primary { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; border-radius: var(--radius); font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer; letter-spacing: 0.03em; transition: opacity 0.15s; }
+  .btn-primary:hover { opacity: 0.8; }
+  .btn-secondary { width: 100%; padding: 10px; background: none; color: var(--text); border: 1px solid var(--border-dark); border-radius: var(--radius); font-family: var(--sans); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+  .btn-secondary:hover { background: var(--tag-bg); }
+  .proposal-wrap { max-width: 860px; margin: 0 auto; }
+  .proposal { background: white; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,0.07); }
+  .p-header { padding: 28px 40px 22px; border-bottom: 2px solid var(--accent); }
+  .p-logo-img { height: 36px; object-fit: contain; display: block; margin-bottom: 16px; }
+  .p-title { font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 4px; letter-spacing: -0.01em; }
+  .p-subtitle { font-size: 13px; color: var(--text-muted); }
+  .p-meta { font-size: 11px; color: var(--text-muted); margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); display: flex; gap: 24px; }
+  .p-meta span strong { color: var(--text); font-weight: 600; }
+  .p-section { padding: 22px 40px; border-bottom: 1px solid var(--border); }
+  .p-section:last-of-type { border-bottom: none; }
+  .p-section-label { font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 14px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .summary-cell { padding: 14px 16px; border-right: 1px solid var(--border); }
+  .summary-cell:last-child { border-right: none; }
+  .summary-cell-label { font-size: 10px; color: var(--text-muted); font-weight: 500; margin-bottom: 6px; }
+  .summary-cell-value { font-size: 20px; font-weight: 700; color: var(--text); line-height: 1; font-family: var(--mono); }
+  .summary-cell-sub { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+  .node-block { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 14px; }
+  .node-block:last-child { margin-bottom: 0; }
+  .node-block-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: var(--tag-bg); border-bottom: 1px solid var(--border); }
+  .node-location { font-size: 16px; font-weight: 700; color: var(--text); }
+  .node-hw-tag { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-blue); }
+  .spec-grid { display: grid; grid-template-columns: 1fr 1fr; }
+  .spec-row { display: grid; grid-template-columns: 100px 1fr; padding: 8px 16px; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .spec-grid > div:first-child .spec-row { border-right: 1px solid var(--border); }
+  .spec-row:last-child { border-bottom: none; }
+  .spec-row:nth-child(odd) { background: white; }
+  .spec-row:nth-child(even) { background: #fafafa; }
+  .spec-key { color: var(--text-muted); font-weight: 500; }
+  .spec-val { color: var(--text); }
+  .node-price-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: var(--tag-bg); border-top: 1px solid var(--border); font-size: 12px; color: var(--text-muted); }
+  .node-price-val { font-family: var(--mono); font-size: 14px; font-weight: 700; color: var(--text); }
+  .total-box { display: flex; justify-content: space-between; align-items: center; padding: 24px 40px; background: var(--accent); color: white; }
+  .total-left { font-size: 13px; opacity: 0.7; }
+  .total-left strong { display: block; font-size: 15px; opacity: 1; margin-bottom: 2px; color: white; }
+  .total-val { font-family: var(--mono); font-size: 32px; font-weight: 700; letter-spacing: -0.02em; }
+  .view-tabs { display: flex; border: 1px solid var(--border-dark); border-radius: var(--radius); overflow: hidden; background: white; width: fit-content; margin-bottom: 20px; }
+  .tab-btn { padding: 8px 18px; font-family: var(--sans); font-size: 12px; font-weight: 500; cursor: pointer; border: none; background: none; color: var(--text-muted); transition: all 0.15s; }
+  .tab-btn.active { background: var(--accent); color: white; }
+  .logo-toggle { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); cursor: pointer; margin-bottom: 10px; }
+  .logo-toggle input { cursor: pointer; }
+  .logo-preview-thumb { height: 20px; object-fit: contain; background: #111; padding: 2px 6px; border-radius: 3px; }
+  .client-info-block { background: var(--tag-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; font-size: 12px; line-height: 1.7; }
+  .client-info-block strong { font-weight: 600; color: var(--text); }
+  .client-info-block span { color: var(--text-muted); }
+  @media print {
+    .sidebar, .view-tabs { display: none !important; }
+    .preview-area { padding: 0 !important; background: white !important; }
+    .proposal { box-shadow: none !important; border: none !important; border-radius: 0 !important; }
+    body { background: white !important; }
+    @page { margin: 0; }
+  }
+  @media (max-width: 900px) {
+    .app { flex-direction: column; }
+    .sidebar { width: 100%; min-width: unset; }
+    .summary-grid { grid-template-columns: 1fr 1fr; }
+    .spec-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <img class="sidebar-logo" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAPoA+gDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAj/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAAAP/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AIyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB//Z" alt="IO.NET">
+      <div class="sidebar-subtitle">Proposal Generator</div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">Logo on Proposal</div>
+      <label class="logo-toggle">
+        <input type="checkbox" id="showLogo" checked onchange="updatePreview()">
+        Show IO.NET logo on proposal
+      </label>
+      <div style="font-size:11px;color:var(--text-muted);">Or upload a custom logo:</div>
+      <div style="margin-top:6px;">
+        <input type="file" id="customLogo" accept="image/*" onchange="handleLogoUpload(event)" style="font-size:11px;color:var(--text-muted);">
+      </div>
+      <div id="logo-preview-wrap" style="margin-top:8px;display:none;">
+        <button onclick="clearCustomLogo()" style="font-size:11px;color:#cc3333;background:none;border:none;cursor:pointer;padding:0;">✕ Remove custom logo</button>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">Client Information</div>
+      <div class="field-row">
+        <label>Client / Company Name</label>
+        <input type="text" id="clientName" placeholder="Acme AI Labs" oninput="updatePreview()">
+      </div>
+      <div class="field-row">
+        <label>Contact Name (optional)</label>
+        <input type="text" id="contactName" placeholder="Jane Smith" oninput="updatePreview()">
+      </div>
+      <div class="field-row">
+        <label>Proposal Title</label>
+        <input type="text" id="proposalTitle" value="H100 GPU Cluster: Blended Rate Proposal" oninput="updatePreview()">
+      </div>
+      <div class="field-row">
+        <label>Engagement Description</label>
+        <input type="text" id="engagementDesc" value="3-month engagement across 3 locations" oninput="updatePreview()">
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">Contract Terms</div>
+      <div class="field-row-2col">
+        <div><label>Duration (months)</label><input type="number" id="months" value="3" min="1" max="60" oninput="updatePreview()"></div>
+        <div><label>Hrs / Month</label><input type="number" id="hrsPerMonth" value="730" min="1" oninput="updatePreview()"></div>
+      </div>
+      <div class="field-row-2col">
+        <div><label>GPUs / Node</label><input type="number" id="gpusPerNode" value="8" min="1" oninput="updatePreview()"></div>
+        <div><label>Rate ($/GPU/hr)</label><input type="number" id="rate" value="1.62" min="0.01" step="0.01" oninput="updatePreview()"></div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">Node Locations</div>
+      <div id="nodes-container"></div>
+      <button class="btn-add" onclick="addNode()">+ Add Location</button>
+    </div>
+
+    <div class="sidebar-actions">
+      <button class="btn-primary" onclick="window.print()">⬇ Export / Print PDF</button>
+      <button class="btn-secondary" onclick="resetForm()">↺ Reset to Default</button>
+    </div>
+  </aside>
+
+  <!-- PREVIEW -->
+  <main class="preview-area">
+    <div class="proposal-wrap">
+      <div class="view-tabs">
+        <button class="tab-btn active" onclick="setTab('preview', this)">Preview</button>
+        <button class="tab-btn" onclick="setTab('json', this)">JSON</button>
+      </div>
+      <div id="preview-panel"></div>
+      <pre id="json-panel" style="display:none;background:white;border:1px solid var(--border);border-radius:4px;padding:20px;font-size:11px;font-family:var(--mono);color:var(--text);overflow:auto;white-space:pre-wrap;"></pre>
+    </div>
+  </main>
+</div>
+
+<script>
+// ── Logo state ──
+const IO_NET_LOGO = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAPoA+gDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAj/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAAAP/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AIyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB//Z';
+let customLogoSrc = null;
+
+function handleLogoUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    customLogoSrc = ev.target.result;
+    document.getElementById('logo-preview-wrap').style.display = 'block';
+    updatePreview();
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearCustomLogo() {
+  customLogoSrc = null;
+  document.getElementById('customLogo').value = '';
+  document.getElementById('logo-preview-wrap').style.display = 'none';
+  updatePreview();
+}
+
+function getLogoSrc() {
+  if (customLogoSrc) return customLogoSrc;
+  return IO_NET_LOGO;
+}
+
+// ── Node state ──
+let nodes = [
+  { id:1, location:"Paris", hardware:"HPE Cray XD670", gpu:"8x NVIDIA H100 SXM", cpu:"2x Intel Xeon Platinum 8452Y (2x36 cores)", memory:"1,024 GB DDR5-4800 ECC Registered", storage:"8x 3.84 TB NVMe + 2x 960 GB NVMe", networking:"8x BlueField-3 ConnectX-7 at 400 Gbps + 2x at 200 Gbps", extra:"NVIDIA SpectrumX" },
+  { id:2, location:"Amsterdam", hardware:"NVIDIA HGX H100", gpu:"8x NVIDIA HGX H100 80 GB 700W SXM5, NVLink", cpu:"2x Intel Xeon Platinum 8468", memory:"2,048 GB (32x 64 GB)", storage:"8x 7 TB 2.5-inch NVMe SSD", networking:"8x Mellanox ConnectX-7 at 400 Gbps", extra:"4x Mellanox ConnectX-6 Dx at 100 Gbps (mgmt)" },
+  { id:3, location:"India", hardware:"NVIDIA H100 SXM5", gpu:"8x NVIDIA H100 SXM5 (640 GB total), NVLink, NVSwitch", cpu:"2x Intel Xeon Platinum 8480+ 2.0 GHz (224 threads)", memory:"2,048 GB DDR5 4800 MT/s", storage:"8x 7.68 TB NVMe SSD U.2 Gen5 + 2x 1.92 TB system", networking:"8x ConnectX-7 NDR InfiniBand (OSFP PCIe) + BlueField-3 DPU", extra:"" }
+];
+let nodeIdCounter = 4;
+
+function g(id) { const e = document.getElementById(id); return e ? e.value : ''; }
+function fmt(n) { return n.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
+
+function addNode() {
+  nodes.push({ id:nodeIdCounter++, location:"New Location", hardware:"", gpu:"", cpu:"", memory:"", storage:"", networking:"", extra:"" });
+  renderNodes(); updatePreview();
+}
+function removeNode(id) { nodes = nodes.filter(n => n.id !== id); renderNodes(); updatePreview(); }
+function updateNode(id, key, value) { const n = nodes.find(n => n.id === id); if(n){ n[key]=value; updatePreview(); } }
+
+function renderNodes() {
+  const c = document.getElementById('nodes-container');
+  c.innerHTML = '';
+  nodes.forEach((node, idx) => {
+    const d = document.createElement('div');
+    d.className = 'node-card';
+    d.innerHTML = `
+      <div class="node-card-header">
+        <span class="node-title">Location #${idx+1}</span>
+        <button class="btn-remove" onclick="removeNode(${node.id})">×</button>
+      </div>
+      <div class="field-row"><label>Location Name</label><input type="text" value="${node.location}" oninput="updateNode(${node.id},'location',this.value)" placeholder="City / Region"></div>
+      <div class="field-row"><label>Hardware Model</label><input type="text" value="${node.hardware}" oninput="updateNode(${node.id},'hardware',this.value)" placeholder="e.g. HPE Cray XD670"></div>
+      <div class="field-row"><label>GPU</label><input type="text" value="${node.gpu}" oninput="updateNode(${node.id},'gpu',this.value)" placeholder="e.g. 8x NVIDIA H100 SXM"></div>
+      <div class="field-row"><label>CPU</label><input type="text" value="${node.cpu}" oninput="updateNode(${node.id},'cpu',this.value)" placeholder="e.g. 2x Intel Xeon..."></div>
+      <div class="field-row"><label>Memory</label><input type="text" value="${node.memory}" oninput="updateNode(${node.id},'memory',this.value)" placeholder="e.g. 2,048 GB DDR5"></div>
+      <div class="field-row"><label>Storage</label><input type="text" value="${node.storage}" oninput="updateNode(${node.id},'storage',this.value)" placeholder="e.g. 8x 7.68 TB NVMe"></div>
+      <div class="field-row"><label>Networking</label><input type="text" value="${node.networking}" oninput="updateNode(${node.id},'networking',this.value)" placeholder="e.g. 8x ConnectX-7..."></div>
+      <div class="field-row"><label>Additional Spec (optional)</label><input type="text" value="${node.extra}" oninput="updateNode(${node.id},'extra',this.value)" placeholder="Fabric / mgmt networking"></div>
+    `;
+    c.appendChild(d);
+  });
+}
+
+function updatePreview() {
+  const months = parseFloat(g('months'))||3;
+  const hrsPerMonth = parseFloat(g('hrsPerMonth'))||730;
+  const gpusPerNode = parseFloat(g('gpusPerNode'))||8;
+  const rate = parseFloat(g('rate'))||1.62;
+  const totalHrs = hrsPerMonth * months * nodes.length;
+  const totalGPUs = gpusPerNode * nodes.length;
+  const totalValue = nodes.length * months * hrsPerMonth * gpusPerNode * rate;
+  const clientName = g('clientName');
+  const contactName = g('contactName');
+  const proposalTitle = g('proposalTitle')||'H100 GPU Cluster: Blended Rate Proposal';
+  const engagementDesc = g('engagementDesc')||'3-month engagement across 3 locations';
+  const showLogo = document.getElementById('showLogo').checked;
+
+  const logoHtml = showLogo
+    ? `<img class="p-logo-img" src="${getLogoSrc()}" alt="IO.NET">`
+    : '';
+
+  const clientBlock = (clientName||contactName) ? `
+    <div class="p-section">
+      <div class="p-section-label">Prepared For</div>
+      <div class="client-info-block">
+        ${clientName ? `<strong>${clientName}</strong><br>` : ''}
+        ${contactName ? `<span>${contactName}</span>` : ''}
+      </div>
+    </div>` : '';
+
+  const nodeBlocksHtml = nodes.map(node => {
+    const nodePrice = months * hrsPerMonth * gpusPerNode * rate;
+    const specs = [
+      ['GPU', node.gpu], ['CPU', node.cpu],
+      ['Memory', node.memory], ['Storage', node.storage],
+      ['Networking', node.networking], ['Extra', node.extra]
+    ].filter(([,v]) => v);
+
+    const half = Math.ceil(specs.length / 2);
+    const col1 = specs.slice(0, half);
+    const col2 = specs.slice(half);
+
+    const renderCol = arr => arr.map(([k,v]) => `
+      <div class="spec-row"><span class="spec-key">${k}</span><span class="spec-val">${v}</span></div>
+    `).join('');
+
+    return `
+      <div class="node-block">
+        <div class="node-block-header">
+          <span class="node-location">${node.location||'—'}</span>
+          <span class="node-hw-tag">${node.hardware||'—'}</span>
+        </div>
+        <div class="spec-grid">
+          <div>${renderCol(col1)}</div>
+          <div>${renderCol(col2)}</div>
+        </div>
+        <div class="node-price-row">
+          <span>${hrsPerMonth} hrs/mo × ${months} months × ${gpusPerNode} GPUs × $${rate.toFixed(2)}</span>
+          <span class="node-price-val">$${fmt(nodePrice)}</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('preview-panel').innerHTML = `
+    <div class="proposal">
+      <div class="p-header">
+        ${logoHtml}
+        <div class="p-title">${proposalTitle}</div>
+        <div class="p-subtitle">${engagementDesc}</div>
+        ${(clientName||contactName) ? `<div class="p-meta"><span>Prepared for: <strong>${clientName||contactName}</strong></span>${contactName && clientName ? `<span>Attn: <strong>${contactName}</strong></span>` : ''}</div>` : ''}
+      </div>
+      ${clientBlock}
+      <div class="p-section">
+        <div class="p-section-label">Summary</div>
+        <div class="summary-grid">
+          <div class="summary-cell"><div class="summary-cell-label">Hours per month</div><div class="summary-cell-value">${Math.round(hrsPerMonth).toLocaleString()}</div><div class="summary-cell-sub">industry standard</div></div>
+          <div class="summary-cell"><div class="summary-cell-label">Total hours</div><div class="summary-cell-value">${Math.round(totalHrs).toLocaleString()}</div><div class="summary-cell-sub">${hrsPerMonth} × ${months} mo × ${nodes.length} loc</div></div>
+          <div class="summary-cell"><div class="summary-cell-label">GPUs per location</div><div class="summary-cell-value">${gpusPerNode}</div><div class="summary-cell-sub">H100 SXM per node</div></div>
+          <div class="summary-cell"><div class="summary-cell-label">Blended rate</div><div class="summary-cell-value">$${rate.toFixed(2)}</div><div class="summary-cell-sub">per GPU / hr</div></div>
+        </div>
+      </div>
+      <div class="p-section">
+        <div class="p-section-label">Node Specifications and Pricing</div>
+        ${nodeBlocksHtml||'<div style="color:var(--text-muted);font-size:13px;">No locations added yet.</div>'}
+      </div>
+      <div class="total-box">
+        <div class="total-left">
+          <strong>Total contract value (${months} month${months!==1?'s':''}, ${nodes.length} location${nodes.length!==1?'s':''})</strong>
+          ${Math.round(totalHrs).toLocaleString()} hrs × ${totalGPUs} GPUs × $${rate.toFixed(2)}/GPU/hr
+        </div>
+        <div class="total-val">$${fmt(totalValue)}</div>
+      </div>
+    </div>`;
+
+  document.getElementById('json-panel').textContent = JSON.stringify({
+    client: { name: clientName, contact: contactName },
+    proposal: { title: proposalTitle, description: engagementDesc },
+    terms: { months, hrsPerMonth, gpusPerNode, ratePerGPUHr: rate },
+    summary: { totalHrs, totalGPUs, totalContractValue: totalValue },
+    nodes: nodes.map(n => ({ ...n, nodeContractValue: months*hrsPerMonth*gpusPerNode*rate }))
+  }, null, 2);
+}
+
+function setTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('preview-panel').style.display = tab==='preview' ? 'block' : 'none';
+  document.getElementById('json-panel').style.display = tab==='json' ? 'block' : 'none';
+}
+
+function resetForm() {
+  document.getElementById('clientName').value='';
+  document.getElementById('contactName').value='';
+  document.getElementById('proposalTitle').value='H100 GPU Cluster: Blended Rate Proposal';
+  document.getElementById('engagementDesc').value='3-month engagement across 3 locations';
+  document.getElementById('months').value=3;
+  document.getElementById('hrsPerMonth').value=730;
+  document.getElementById('gpusPerNode').value=8;
+  document.getElementById('rate').value=1.62;
+  document.getElementById('showLogo').checked=true;
+  clearCustomLogo();
+  nodes=[
+    {id:10,location:"Paris",hardware:"HPE Cray XD670",gpu:"8x NVIDIA H100 SXM",cpu:"2x Intel Xeon Platinum 8452Y (2x36 cores)",memory:"1,024 GB DDR5-4800 ECC Registered",storage:"8x 3.84 TB NVMe + 2x 960 GB NVMe",networking:"8x BlueField-3 ConnectX-7 at 400 Gbps + 2x at 200 Gbps",extra:"NVIDIA SpectrumX"},
+    {id:11,location:"Amsterdam",hardware:"NVIDIA HGX H100",gpu:"8x NVIDIA HGX H100 80 GB 700W SXM5, NVLink",cpu:"2x Intel Xeon Platinum 8468",memory:"2,048 GB (32x 64 GB)",storage:"8x 7 TB 2.5-inch NVMe SSD",networking:"8x Mellanox ConnectX-7 at 400 Gbps",extra:"4x Mellanox ConnectX-6 Dx at 100 Gbps (mgmt)"},
+    {id:12,location:"India",hardware:"NVIDIA H100 SXM5",gpu:"8x NVIDIA H100 SXM5 (640 GB total), NVLink, NVSwitch",cpu:"2x Intel Xeon Platinum 8480+ 2.0 GHz (224 threads)",memory:"2,048 GB DDR5 4800 MT/s",storage:"8x 7.68 TB NVMe SSD U.2 Gen5 + 2x 1.92 TB system",networking:"8x ConnectX-7 NDR InfiniBand (OSFP PCIe) + BlueField-3 DPU",extra:""}
+  ];
+  nodeIdCounter=20;
+  renderNodes(); updatePreview();
+}
+
+renderNodes();
+updatePreview();
+</script>
+</body>
+</html>
