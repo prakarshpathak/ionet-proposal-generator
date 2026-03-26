@@ -109,6 +109,8 @@
     .spec-grid { grid-template-columns: 1fr; }
   }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 <div class="app">
@@ -173,7 +175,7 @@
     </div>
 
     <div class="sidebar-actions">
-      <button class="btn-primary" onclick="window.print()">⬇ Export / Print PDF</button>
+      <button class="btn-primary" onclick="exportPDF()">⬇ Export / Print PDF</button>
       <button class="btn-secondary" onclick="resetForm()">↺ Reset to Default</button>
     </div>
   </aside>
@@ -387,6 +389,59 @@ function resetForm() {
   ];
   nodeIdCounter=20;
   renderNodes(); updatePreview();
+}
+
+async function exportPDF() {
+  if (!window.jspdf || !window.html2canvas) {
+    alert("PDF libraries are still loading. Please try again in a moment.");
+    return;
+  }
+  
+  const { jsPDF } = window.jspdf;
+  const element = document.querySelector('.proposal');
+  const btn = document.querySelector('.btn-primary');
+  
+  const originalText = btn.innerText;
+  btn.innerText = '⏳ Generating PDF...';
+  btn.disabled = true;
+  
+  // Briefly remove box-shadow and border for a cleaner PDF
+  const oldBoxShadow = element.style.boxShadow;
+  const oldBorder = element.style.border;
+  element.style.boxShadow = 'none';
+  element.style.border = 'none';
+  
+  try {
+    const canvas = await html2canvas(element, { 
+      scale: 2, 
+      useCORS: true,
+      backgroundColor: '#ffffff'
+    });
+    
+    const imgData = canvas.toDataURL('image/jpeg', 1.0);
+    const pdfWidth = element.offsetWidth;
+    const pdfHeight = element.offsetHeight;
+    
+    const pdf = new jsPDF({
+      orientation: pdfWidth > pdfHeight ? 'landscape' : 'portrait',
+      unit: 'px',
+      format: [pdfWidth, pdfHeight]
+    });
+    
+    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+    
+    let title = document.getElementById('clientName').value || 'proposal';
+    title = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    pdf.save(`ionet_${title}.pdf`);
+  } catch (err) {
+    console.error(err);
+    alert('Failed to generate PDF.');
+  } finally {
+    element.style.boxShadow = oldBoxShadow;
+    element.style.border = oldBorder;
+    btn.innerText = originalText;
+    btn.disabled = false;
+  }
 }
 
 renderNodes();
