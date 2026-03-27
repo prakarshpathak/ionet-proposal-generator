@@ -269,9 +269,10 @@ function updatePreview() {
   const hrsPerMonth = parseFloat(g('hrsPerMonth'))||730;
   const gpusPerNode = parseFloat(g('gpusPerNode'))||8;
   const rate = parseFloat(g('rate'))||1.62;
-  const totalHrs = hrsPerMonth * months * nodes.length;
+  const totalDurationHrs = hrsPerMonth * months;
   const totalGPUs = gpusPerNode * nodes.length;
-  const totalValue = nodes.length * months * hrsPerMonth * gpusPerNode * rate;
+  const totalGPUHrs = totalDurationHrs * totalGPUs;
+  const totalValue = totalGPUHrs * rate;
   const clientName = g('clientName');
   const contactName = g('contactName');
   const proposalTitle = g('proposalTitle')||'H100 GPU Cluster: Blended Rate Proposal';
@@ -337,7 +338,7 @@ function updatePreview() {
         <div class="p-section-label">Summary</div>
         <div class="summary-grid">
           <div class="summary-cell"><div class="summary-cell-label">Hours per month</div><div class="summary-cell-value">${Math.round(hrsPerMonth).toLocaleString()}</div><div class="summary-cell-sub">industry standard</div></div>
-          <div class="summary-cell"><div class="summary-cell-label">Total hours</div><div class="summary-cell-value">${Math.round(totalHrs).toLocaleString()}</div><div class="summary-cell-sub">${hrsPerMonth} × ${months} mo × ${nodes.length} loc</div></div>
+          <div class="summary-cell"><div class="summary-cell-label">Total GPU hours</div><div class="summary-cell-value">${Math.round(totalGPUHrs).toLocaleString()}</div><div class="summary-cell-sub">${Math.round(totalDurationHrs).toLocaleString()} hrs/GPU × ${totalGPUs} GPUs</div></div>
           <div class="summary-cell"><div class="summary-cell-label">GPUs per location</div><div class="summary-cell-value">${gpusPerNode}</div><div class="summary-cell-sub">H100 SXM per node</div></div>
           <div class="summary-cell"><div class="summary-cell-label">Blended rate</div><div class="summary-cell-value">$${rate.toFixed(2)}</div><div class="summary-cell-sub">per GPU / hr</div></div>
         </div>
@@ -349,7 +350,7 @@ function updatePreview() {
       <div class="total-box">
         <div class="total-left">
           <strong>Total contract value (${months} month${months!==1?'s':''}, ${nodes.length} location${nodes.length!==1?'s':''})</strong>
-          ${Math.round(totalHrs).toLocaleString()} hrs × ${totalGPUs} GPUs × $${rate.toFixed(2)}/GPU/hr
+          ${Math.round(totalDurationHrs).toLocaleString()} hrs/GPU × ${totalGPUs} GPUs × $${rate.toFixed(2)}/GPU/hr
         </div>
         <div class="total-val">$${fmt(totalValue)}</div>
       </div>
@@ -359,7 +360,7 @@ function updatePreview() {
     client: { name: clientName, contact: contactName },
     proposal: { title: proposalTitle, description: engagementDesc },
     terms: { months, hrsPerMonth, gpusPerNode, ratePerGPUHr: rate },
-    summary: { totalHrs, totalGPUs, totalContractValue: totalValue },
+    summary: { totalGPUHrs, totalGPUs, totalContractValue: totalValue },
     nodes: nodes.map(n => ({ ...n, nodeContractValue: months*hrsPerMonth*gpusPerNode*rate }))
   }, null, 2);
 }
